@@ -4,7 +4,7 @@
 
 This document describes the CI/CD pipeline for the **Corrective Self-Reflective RAG** application.
 Every push to the `deploy/aws-eb` branch automatically builds a Docker image, pushes it to Amazon ECR,
-and deploys it to Elastic Beanstalk — with all environment variables injected from GitHub Secrets.
+and deploys it to Elastic Beanstalk — with all environment variables injected from GitHub Secrets..
 
 ---
 
