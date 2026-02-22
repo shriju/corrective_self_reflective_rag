@@ -1,23 +1,26 @@
-name: Deploy to AWS
+name: Deploy Existing Docker Image to AWS
 
 on:
+  workflow_dispatch:   # allows manual trigger
   push:
     branches:
-      - deploy/aws-eb  # trigger when you push to this branch
+      - deploy/aws-eb
 
 jobs:
-  build-and-deploy:
+  deploy-eb:
     runs-on: ubuntu-latest
 
     env:
       AWS_REGION: us-east-1
       ECR_REPO: myecrrepo
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: your-existing-image-tag   # replace with the exact image tag in ECR
 
     steps:
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -25,32 +28,16 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Build Docker image
-        run: |
-          docker build -t $ECR_REPO:$IMAGE_TAG .
-
-      - name: Tag Docker image for ECR
-        run: |
-          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
-
-      - name: Push Docker image to ECR
-        run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
-
-      # Optional: deploy to Elastic Beanstalk
+      # 3. Deploy to Elastic Beanstalk using existing Docker image
       - name: Deploy to Elastic Beanstalk
-        if: success()
         uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: your-eb-app-name
-          environment_name: your-eb-env-name
+          application_name: your-eb-app-name       # Replace with your EB app name
+          environment_name: your-eb-env-name       # Replace with your EB environment name
           region: ${{ env.AWS_REGION }}
-          version_label: $IMAGE_TAG
-          bucket_name: your-s3-bucket-for-eb
-          bucket_key: docker-image-$IMAGE_TAG.zip
+          version_label: deploy-${{ github.sha }}  # Unique version label for EB
+          bucket_name: your-s3-bucket-for-eb       # Replace with your S3 bucket
+          bucket_key: existing-docker-image.zip    # Name for the package in S3
+          docker_image: ${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}  # Use existing ECR image
