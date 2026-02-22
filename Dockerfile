@@ -5,7 +5,8 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
     UV_LINK_MODE=copy \
-    UV_TORCH_BACKEND=cpu
+    UV_TORCH_BACKEND=cpu \
+    UV_HTTP_TIMEOUT=300
 
 WORKDIR /app
 
@@ -23,19 +24,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 RUN touch uv.lock
 COPY uv.lock* ./
-RUN uv sync --no-dev --no-install-project
+
+# Retry uv sync to handle network issues
+RUN bash -c "for i in 1 2 3; do uv sync --no-dev --no-install-project && break || sleep 10; done"
 
 # Pass 2 — install the project itself (invalidated only when source changes)
 COPY README.md ./
 COPY app/ ./app/
-RUN uv sync --no-dev
+RUN bash -c "for i in 1 2 3; do uv sync --no-dev && break || sleep 10; done"
 
-# Pre-download the cross-encoder reranker model at build time so there is
-# no HuggingFace network call at container startup.
+# Pre-download the cross-encoder reranker model at build time
 RUN uv run python -c "\
 from sentence_transformers import CrossEncoder; \
 CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')"
-
 
 # ============================================================
 # Stage 2: Runtime — lean image with only what is needed
@@ -74,5 +75,4 @@ USER appuser
 EXPOSE 8000
 
 # --workers 1: sentence-transformers and faiss are not fork-safe.
-# Scale horizontally by adding more Beanstalk instances instead.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
