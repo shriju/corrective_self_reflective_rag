@@ -72,7 +72,7 @@ RUN mkdir -p /var/app/uploads && chown appuser:appuser /var/app/uploads
 
 USER appuser
 
-EXPOSE 8000
+EXPOSE 8080
 
 # --workers 1: sentence-transformers and faiss are not fork-safe.
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]

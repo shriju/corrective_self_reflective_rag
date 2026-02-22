@@ -6,7 +6,7 @@
   },
   "Ports": [
     {
-      "ContainerPort": "8000"
+      "ContainerPort": "8080"
     }
   ],
   "Logging": "/var/log/eb-docker/containers/eb-current-app"
