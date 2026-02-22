@@ -3,7 +3,7 @@ name: Deploy to AWS Elastic Beanstalk
 on:
   push:
     branches:
-      - deploy/aws-eb  # trigger when you push to this branch
+      - deploy/aws-eb  # triggers on this branch
 
 jobs:
   build-and-deploy:
@@ -12,7 +12,7 @@ jobs:
     env:
       AWS_REGION: us-east-1
       ECR_REPO: myecrrepo
-      IMAGE_TAG: ${{ github.sha }}
+      IMAGE_TAG: ${{ github.sha }}  # unique tag per commit
 
     steps:
       - name: Checkout repository
@@ -35,16 +35,18 @@ jobs:
 
       - name: Tag Docker image for ECR
         run: |
-          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
 
       - name: Push Docker image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
 
-      - name: Prepare Dockerrun file for deployment
+      - name: Prepare Dockerrun.zip for Beanstalk
         run: |
           cp Dockerrun.aws.json Dockerrun-$IMAGE_TAG.json
           zip deploy-$IMAGE_TAG.zip Dockerrun-$IMAGE_TAG.json
+        env:
+          IMAGE_TAG: ${{ github.sha }}
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
@@ -54,6 +56,6 @@ jobs:
           application_name: crag-rag-app
           environment_name: crag-rag-prod
           region: ${{ env.AWS_REGION }}
-          version_label: $IMAGE_TAG
-          deployment_package: deploy-$IMAGE_TAG.zip
+          version_label: ${{ env.IMAGE_TAG }}
+          deployment_package: deploy-${{ env.IMAGE_TAG }}.zip
           wait_for_deployment: true
