@@ -1,9 +1,9 @@
-name: Deploy to AWS
+name: Deploy to AWS Elastic Beanstalk
 
 on:
   push:
     branches:
-      - deploy/aws-eb
+      - deploy/aws-eb  # trigger when you push to this branch
 
 jobs:
   build-and-deploy:
@@ -31,29 +31,29 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t $ECR_REPO:${{ env.IMAGE_TAG }} .
+          docker build -t $ECR_REPO:$IMAGE_TAG .
 
       - name: Tag Docker image for ECR
         run: |
-          docker tag $ECR_REPO:${{ env.IMAGE_TAG }} ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:${{ env.IMAGE_TAG }}
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
 
       - name: Push Docker image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:${{ env.IMAGE_TAG }}
+          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
 
-      - name: Prepare Dockerrun file
+      - name: Prepare Dockerrun file for deployment
         run: |
-          cp Dockerrun.aws.json Dockerrun-${{ env.IMAGE_TAG }}.json
-          zip deploy-${{ env.IMAGE_TAG }}.zip Dockerrun-${{ env.IMAGE_TAG }}.json
+          cp Dockerrun.aws.json Dockerrun-$IMAGE_TAG.json
+          zip deploy-$IMAGE_TAG.zip Dockerrun-$IMAGE_TAG.json
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: crag-rag-prod
+          application_name: crag-rag-app
           environment_name: crag-rag-prod
           region: ${{ env.AWS_REGION }}
-          version_label: ${{ env.IMAGE_TAG }}
-          deployment_package: deploy-${{ env.IMAGE_TAG }}.zip
+          version_label: $IMAGE_TAG
+          deployment_package: deploy-$IMAGE_TAG.zip
           wait_for_deployment: true
