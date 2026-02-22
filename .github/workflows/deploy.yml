@@ -1,9 +1,9 @@
-name: Deploy to AWS Elastic Beanstalk
+name: Deploy to AWS
 
 on:
   push:
     branches:
-      - deploy/aws-eb  # workflow triggers when you push to this branch
+      - deploy/aws-eb  # triggers when you push to this branch
 
 jobs:
   build-and-deploy:
@@ -35,27 +35,26 @@ jobs:
 
       - name: Tag Docker image for ECR
         run: |
-          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
 
       - name: Push Docker image to ECR
         run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+          docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
 
       - name: Update Dockerrun.aws.json with new image tag
         run: |
-          sed -i "s/:latest/:$IMAGE_TAG/" Dockerrun.aws.json
+          sed -i "s|:latest|:$IMAGE_TAG|" Dockerrun.aws.json
 
-      - name: Zip Dockerrun.aws.json for EB
-        run: |
-          zip -r deploy-$IMAGE_TAG.zip Dockerrun.aws.json
+      - name: Prepare EB deployment package
+        run: zip deploy-$IMAGE_TAG.zip Dockerrun.aws.json
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          application_name: your-eb-app-name        # <-- replace with your EB app name
-          environment_name: your-eb-env-name        # <-- replace with your EB environment name
+          application_name: your-eb-app-name
+          environment_name: your-eb-env-name
           region: ${{ env.AWS_REGION }}
           version_label: $IMAGE_TAG
           deployment_package: deploy-$IMAGE_TAG.zip
