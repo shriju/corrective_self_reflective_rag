@@ -3,7 +3,7 @@ name: Deploy to AWS
 on:
   push:
     branches:
-      - deploy/aws-eb  # triggers when you push to this branch
+      - deploy/aws-eb  # trigger when you push to this branch
 
 jobs:
   build-and-deploy:
@@ -41,12 +41,13 @@ jobs:
         run: |
           docker push ${{ steps.login-ecr.outputs.registry }}/${ECR_REPO}:$IMAGE_TAG
 
-      - name: Update Dockerrun.aws.json with new image tag
+      - name: Prepare Elastic Beanstalk deployment package
         run: |
-          sed -i "s|:latest|:$IMAGE_TAG|" Dockerrun.aws.json
-
-      - name: Prepare EB deployment package
-        run: zip deploy-$IMAGE_TAG.zip Dockerrun.aws.json
+          mkdir -p eb-deploy
+          cp Dockerrun.aws.json eb-deploy/Dockerrun.aws.json
+          cd eb-deploy
+          zip -r ../deploy-${IMAGE_TAG}.zip .
+          cd ..
 
       - name: Deploy to Elastic Beanstalk
         uses: einaregilsson/beanstalk-deploy@v22
@@ -56,6 +57,6 @@ jobs:
           application_name: your-eb-app-name
           environment_name: your-eb-env-name
           region: ${{ env.AWS_REGION }}
-          version_label: $IMAGE_TAG
-          deployment_package: deploy-$IMAGE_TAG.zip
+          version_label: ${{ env.IMAGE_TAG }}
+          deployment_package: deploy-${{ env.IMAGE_TAG }}.zip
           wait_for_deployment: true
